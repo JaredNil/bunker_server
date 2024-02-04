@@ -1,9 +1,18 @@
 import { WebSocketServer } from 'ws';
 import { v4 as uuid } from 'uuid';
+import express from 'express';
+import http from 'http';
+
+const app = express();
+
+const server = http.createServer(app);
 
 const connection = {};
 
-const wss = new WebSocketServer({ port: 8001 });
+const wss = new WebSocketServer(
+	{ server }
+	// { port: 8001 }
+);
 console.log('Server started');
 
 const getActualSessionList = () => {
@@ -151,3 +160,5 @@ wss.on('connection', function (ws) {
 		delete connection[id];
 	});
 });
+
+server.listen(8001);
