@@ -1,22 +1,76 @@
-import { WebSocketServer } from 'ws';
+import ws, { WebSocketServer } from 'ws';
 import { v4 as uuid } from 'uuid';
 import express from 'express';
-import http from 'http';
+import { createServer } from 'http';
 
 const app = express();
+const server = createServer(app);
 
-const server = http.createServer(app);
+const PORT = 3001 || process.env.PORT;
+
+function initWs() {
+	const options = {
+		noServer: true,
+	};
+
+	return new WebSocketServer(options);
+}
+
+function initHttpServer(port) {
+	app.get('/', (req, res) => {
+		res.send('Giphy Chat Server is running successfully');
+	});
+
+	server.listen(port, () => {
+		console.log(`Server is working on http://localhost:${port}`);
+	});
+
+	return app;
+}
+
+function initWebSocketServer(port = 8001) {
+	initHttpServer(port);
+	const wss = initWs();
+
+	server.on('upgrade', async (req, socket, head) => {
+		try {
+			wss.handleUpgrade(req, socket, head, (ws) => {
+				// Do something before firing the connected event
+
+				wss.emit('connection', ws, req);
+			});
+		} catch (err) {
+			// Socket uprade failed
+			// Close socket and clean
+			console.log('Socket upgrade failed', err);
+			socket.destroy();
+		}
+	});
+
+	return wss;
+}
+const wss = initWebSocketServer();
+
+// wss.on('connection', (ws) => {
+// 	ws.on('message', (data) => {
+// 		ws.send(data);
+// 	});
+// });
+
+// const app = express();
+
+// const server = http.createServer(app);
 
 const connection = {};
 
-const wss = new WebSocketServer({
-	server,
-	cors: {
-		origin: '*',
-		credentials: true,
-		methods: ['GET', 'POST'],
-	},
-});
+// const wss = new WebSocketServer({
+// 	server,
+// 	cors: {
+// 		origin: '*',
+// 		credentials: true,
+// 		methods: ['GET', 'POST'],
+// 	},
+// });
 console.log('Server started');
 
 const getActualSessionList = () => {
@@ -164,15 +218,3 @@ wss.on('connection', function (ws) {
 		delete connection[id];
 	});
 });
-app.get('/', (req, res) => {
-	res.send('Giphy Chat Server is running successfully');
-});
-app.use(function (req, res, next) {
-	res.header('Access-Control-Allow-Origin', '*');
-	res.header('Access-Control-Allow-Headers', 'X-Requested-With');
-	res.header('Access-Control-Allow-Headers', 'Content-Type');
-	res.header('Access-Control-Allow-Methods', 'PUT, GET, POST, DELETE, OPTIONS');
-	next();
-});
-
-server.listen(8001);
