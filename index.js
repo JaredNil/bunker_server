@@ -1,31 +1,112 @@
 import { WebSocketServer } from 'ws';
 import { v4 as uuid } from 'uuid';
-// import { createServer } from 'https';
-// import { readFileSync } from 'fs';
-// подключенные клиенты
-const clients = {};
 
-// WebSocket-сервер на порту 8001
+const connection = {
+	1212: {
+		isAuth: true,
+		nickname: 'Advice',
+		ws: 'ws_sample',
+	},
+	1213: {
+		isAuth: true,
+		nickname: 'Advice2',
+		ws: 'ws_sample',
+	},
+};
+
 const wss = new WebSocketServer({ port: 8001 });
 console.log('Server started');
+
+const getActualSessionList = () => {
+	const actualClientsList = [];
+	for (const connect in connection) {
+		actualClientsList.push(connection[connect].nickname);
+	}
+	return actualClientsList;
+};
+
+const isNewClientConnection = (nickname, id) => {
+	let isNew = true;
+	const actualClientsList = getActualSessionList();
+
+	actualClientsList.forEach((cl) => {
+		if (cl === nickname) isNew = false;
+	});
+	console.log('          isNewClientConnection' + actualClientsList, nickname, isNew);
+
+	return isNew;
+};
+
+const eventSwitchHandler = (message, ws, id) => {
+	const { type, body } = JSON.parse(message);
+	console.log(type, body, Boolean(ws), 'сообщение принято');
+
+	switch (type) {
+		case 'auth':
+			// nickname = body NOTICE IS THIS CASE
+			if (body) {
+				if (isNewClientConnection(body, id)) {
+					connection[id].isAuth = true;
+					connection[id].nickname = body;
+					ws.send(
+						JSON.stringify({
+							type: 'auth_res',
+							status: 200,
+							nickname: connection[
+								id
+							].nickname,
+							clientList: getActualSessionList(),
+						})
+					);
+				} else {
+					ws.send(
+						JSON.stringify({
+							type: 'auth_err',
+							status: 403,
+							desc: 'The user is already authorization in this game right now.',
+						})
+					);
+				}
+			}
+
+			break;
+		case 'logout':
+			const nickname = body;
+			let logoutConnectId = null;
+
+			for (const connect in connection) {
+				if (connection[connect].nickname === nickname) {
+					logoutConnectId = connect;
+				}
+			}
+			connection[logoutConnectId].isAuth = false;
+			connection[logoutConnectId].nickname = null;
+
+			break;
+		default:
+			console.log(body);
+			break;
+	}
+};
 
 wss.on('connection', function (ws) {
 	const id = uuid();
 
-	clients[id] = ws;
+	connection[id] = {
+		isAuth: false,
+		nickname: null,
+		ws: ws,
+	};
 
 	console.log('New connect ' + id);
 
 	ws.on('message', function (message) {
-		console.log('получено сообщение ' + message);
-
-		// for (var key in clients) {
-		// 	clients[key].send(message);
-		// }
+		eventSwitchHandler(String(message), ws, id);
 	});
 
 	ws.on('close', function () {
 		console.log('соединение закрыто ' + id);
-		delete clients[id];
+		// delete clients[id];
+		delete connection[id];
 	});
 });
