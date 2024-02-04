@@ -9,10 +9,14 @@ const server = http.createServer(app);
 
 const connection = {};
 
-const wss = new WebSocketServer(
-	{ server }
-	// { port: 8001 }
-);
+const wss = new WebSocketServer({
+	server,
+	cors: {
+		origin: '*',
+		credentials: true,
+		methods: ['GET', 'POST'],
+	},
+});
 console.log('Server started');
 
 const getActualSessionList = () => {
@@ -159,6 +163,16 @@ wss.on('connection', function (ws) {
 		console.log('соединение закрыто ' + id);
 		delete connection[id];
 	});
+});
+app.get('/', (req, res) => {
+	res.send('Giphy Chat Server is running successfully');
+});
+app.use(function (req, res, next) {
+	res.header('Access-Control-Allow-Origin', '*');
+	res.header('Access-Control-Allow-Headers', 'X-Requested-With');
+	res.header('Access-Control-Allow-Headers', 'Content-Type');
+	res.header('Access-Control-Allow-Methods', 'PUT, GET, POST, DELETE, OPTIONS');
+	next();
 });
 
 server.listen(8001);
