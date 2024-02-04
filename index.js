@@ -1,18 +1,7 @@
 import { WebSocketServer } from 'ws';
 import { v4 as uuid } from 'uuid';
 
-const connection = {
-	1212: {
-		isAuth: true,
-		nickname: 'Advice',
-		ws: 'ws_sample',
-	},
-	1213: {
-		isAuth: true,
-		nickname: 'Advice2',
-		ws: 'ws_sample',
-	},
-};
+const connection = {};
 
 const wss = new WebSocketServer({ port: 8001 });
 console.log('Server started');
@@ -69,6 +58,18 @@ const eventSwitchHandler = (message, ws, id) => {
 				}
 			}
 
+			// UPDATE FOR ALL - AUTH NEW AUTH_CLIENT
+			Object.keys(connection).forEach((client, i) => {
+				connection[client].ws.send(
+					JSON.stringify({
+						type: 'update_gameData',
+						status: 200,
+						nickname: client.nickname,
+						clientList: getActualSessionList(),
+					})
+				);
+			});
+
 			break;
 		case 'logout':
 			const nickname = body;
@@ -79,10 +80,51 @@ const eventSwitchHandler = (message, ws, id) => {
 					logoutConnectId = connect;
 				}
 			}
-			connection[logoutConnectId].isAuth = false;
-			connection[logoutConnectId].nickname = null;
+			if (logoutConnectId) {
+				connection[logoutConnectId].isAuth = false;
+				connection[logoutConnectId].nickname = null;
+			}
+
+			// UPDATE FOR ALL - LOGOUT NEW AUTH_CLIENT
+			Object.keys(connection).forEach((client, i) => {
+				connection[client].ws.send(
+					JSON.stringify({
+						type: 'update_gameData',
+						status: 200,
+						nickname: client.nickname,
+						clientList: getActualSessionList(),
+					})
+				);
+			});
 
 			break;
+
+		case 'update':
+			// nickname = body NOTICE IS THIS CASE
+			connection[id].isAuth = true;
+			connection[id].nickname = body;
+			ws.send(
+				JSON.stringify({
+					type: 'update_res',
+					status: 200,
+					nickname: connection[id].nickname,
+					clientList: getActualSessionList(),
+				})
+			);
+
+			Object.keys(connection).forEach((client, i) => {
+				connection[client].ws.send(
+					JSON.stringify({
+						type: 'update_gameData',
+						status: 200,
+						nickname: client.nickname,
+						clientList: getActualSessionList(),
+					})
+				);
+			});
+
+			break;
+
 		default:
 			console.log(body);
 			break;
@@ -106,7 +148,6 @@ wss.on('connection', function (ws) {
 
 	ws.on('close', function () {
 		console.log('соединение закрыто ' + id);
-		// delete clients[id];
 		delete connection[id];
 	});
 });
