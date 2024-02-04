@@ -6,7 +6,7 @@ import { createServer } from 'http';
 const app = express();
 const server = createServer(app);
 
-const PORT = 3001 || process.env.PORT;
+const PORT = 8001 || process.env.PORT;
 
 function initWs() {
 	const options = {
@@ -16,20 +16,20 @@ function initWs() {
 	return new WebSocketServer(options);
 }
 
-function initHttpServer(port) {
+function initHttpServer(PORT) {
 	app.get('/', (req, res) => {
 		res.send('Giphy Chat Server is running successfully');
 	});
 
-	server.listen(port, () => {
-		console.log(`Server is working on http://localhost:${port}`);
+	server.listen(PORT, () => {
+		console.log(`Server is working on http://localhost:${PORT}`);
 	});
 
 	return app;
 }
 
-function initWebSocketServer(port = 8001) {
-	initHttpServer(port);
+function initWebSocketServer(PORT = 8001) {
+	initHttpServer(PORT);
 	const wss = initWs();
 
 	server.on('upgrade', async (req, socket, head) => {
